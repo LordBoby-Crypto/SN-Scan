@@ -30,6 +30,7 @@ button, input, select { font: inherit; }
 button { color: inherit; }
 svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .hidden { display: none !important; }
+#backButton.hidden { display: grid !important; visibility: hidden; pointer-events: none; }
 
 .app-shell { width: 100%; max-width: 720px; min-height: 100dvh; margin: 0 auto; background: rgba(7, 17, 20, .9); position: relative; }
 .topbar { position: sticky; top: 0; z-index: 20; min-height: calc(68px + var(--safe-top)); padding: calc(12px + var(--safe-top)) 16px 12px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border-bottom: 1px solid rgba(89, 121, 130, .24); background: rgba(7, 17, 20, .88); backdrop-filter: blur(18px); }
