@@ -1,0 +1,19 @@
+{
+  "name": "SN-Scan",
+  "short_name": "SN-Scan",
+  "description": "Scan and track old and new device serial numbers by school and room.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#071114",
+  "theme_color": "#071114",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
