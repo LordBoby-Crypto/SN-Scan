@@ -12,6 +12,16 @@ test('extracts serial from compact diagnostics line', () => {
   assert.equal(extractBestSerial(text), 'YX0EEL9T');
 });
 
+test('repairs common OCR substitutions from a physical Lenovo label', () => {
+  const text = `Lenovo 300e Yoga Chromebook Gen 4\nSANSYXOEEL9OT MTM:82W2002KUS`;
+  assert.equal(extractBestSerial(text), 'YX0EEL9T');
+});
+
+test('repairs common OCR substitutions from a diagnostics screen', () => {
+  const text = `ZTE ADID:1S82W2002KUSYXOEELST SN YXOEELST`;
+  assert.equal(extractBestSerial(text), 'YX0EEL9T');
+});
+
 test('ranks labeled serial above model number', () => {
   const text = `MODEL 82W2002KUS INPUT 20V 325A SERIAL NUMBER AB12CD34`;
   assert.equal(extractSerialCandidates(text)[0].value, 'AB12CD34');
