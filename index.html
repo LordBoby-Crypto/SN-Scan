@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#071114" />
+  <meta name="description" content="Scan old and new device serial numbers by room and school." />
+  <title>SN-Scan</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+  <script type="module" src="app.js" defer></script>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <button id="backButton" class="icon-button hidden" type="button" aria-label="Go back">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="brand" aria-label="SN-Scan">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M7 11V7h4M21 7h4v4M25 21v4h-4M11 25H7v-4M10 13v6M13 11v10M16 12v8M19 11v10M22 13v6"/></svg>
+        </span>
+        <span>SN-Scan</span>
+      </div>
+      <button id="headerAction" class="icon-button" type="button" aria-label="Add school">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </header>
+
+    <main id="mainContent" class="main-content" aria-live="polite"></main>
+
+    <nav id="bottomNav" class="bottom-nav" aria-label="Primary navigation">
+      <button type="button" data-nav="schools" class="nav-button active">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9H3zM9 20v-6h6v6"/></svg>
+        <span>Schools</span>
+      </button>
+      <button type="button" data-nav="history" class="nav-button">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8v5l3 2M4.9 5.2A9 9 0 1 1 3 12M3 4v5h5"/></svg>
+        <span>History</span>
+      </button>
+      <button type="button" data-nav="settings" class="nav-button">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <template id="schoolListTemplate">
+    <section class="page page-schools">
+      <div class="page-heading">
+        <div>
+          <h1>Schools</h1>
+          <p>Select a school to scan a device replacement.</p>
+        </div>
+      </div>
+      <div id="schoolList" class="school-list"></div>
+    </section>
+  </template>
+
+  <template id="emptySchoolsTemplate">
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M12 54V25l20-12 20 12v29M8 54h48M22 54V38h20v16M26 28h12M32 22v12"/></svg>
+      </div>
+      <h2>Create your first school</h2>
+      <p>School names organize every room and old/new serial-number pair.</p>
+      <button class="primary-button" data-action="create-school" type="button">Create school</button>
+    </div>
+  </template>
+
+  <template id="schoolRowTemplate">
+    <button class="school-row" type="button">
+      <span class="school-icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M5 27V13l11-7 11 7v14M3 27h26M11 27v-8h10v8M13 14h6M16 10v8"/></svg>
+      </span>
+      <span class="school-copy">
+        <strong></strong>
+        <small></small>
+      </span>
+      <svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+  </template>
+
+  <template id="scanStepTemplate">
+    <section class="page scan-page">
+      <div class="stepper" aria-label="Scan progress">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="scan-heading">
+        <p class="step-label"></p>
+        <h1></h1>
+        <p class="step-help"></p>
+      </div>
+      <div class="camera-card">
+        <div class="camera-preview">
+          <img alt="Selected device label" class="hidden" />
+          <div class="camera-placeholder">
+            <svg aria-hidden="true" viewBox="0 0 48 48"><path d="M16 12l3-5h10l3 5h7a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4zM24 34a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/></svg>
+            <strong>Take a clear label photo</strong>
+            <span>Keep the S/N text level and fill the frame.</span>
+          </div>
+          <div class="scan-guide" aria-hidden="true"><span>S/N</span></div>
+        </div>
+        <input class="camera-input" type="file" accept="image/*" capture="environment" />
+        <button class="camera-button primary-button" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7l1.5-3h5L16 7h3a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3zM12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
+          Take photo
+        </button>
+      </div>
+      <div class="ocr-panel hidden">
+        <div class="ocr-status-row">
+          <span class="spinner" aria-hidden="true"></span>
+          <div><strong>Reading the S/N...</strong><small>Processing stays on this phone.</small></div>
+          <span class="ocr-percent">0%</span>
+        </div>
+        <div class="progress-track"><span></span></div>
+      </div>
+      <div class="serial-result hidden">
+        <label for="serialField">Detected S/N</label>
+        <input id="serialField" class="serial-field" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" />
+        <div class="candidate-list" aria-label="Other possible serial numbers"></div>
+        <p class="field-note">Check every character. You can correct it before continuing.</p>
+        <button class="primary-button continue-button" type="button">Use this S/N</button>
+        <button class="text-button retake-button" type="button">Retake photo</button>
+      </div>
+    </section>
+  </template>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
