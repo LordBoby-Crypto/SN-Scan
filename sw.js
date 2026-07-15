@@ -1,5 +1,5 @@
-const CACHE = 'sn-scan-v1';
-const APP_FILES = ['./', './index.html', './styles.css', './app.js', './serial-parser.js', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'sn-scan-v2';
+const APP_FILES = ['./', './index.html', './styles.css', './app.js', './serial-parser.js', './ocr-multipass.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_FILES)));
