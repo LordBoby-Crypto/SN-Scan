@@ -1,4 +1,4 @@
-const CACHE = 'sn-scan-live-text-v1';
+const CACHE = 'sn-scan-live-text-v2';
 const APP_FILES = ['./', './index.html', './styles.css', './app.js', './multi-mode.js', './live-scanner.js', './serial-parser.js', './ocr-multipass.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {
