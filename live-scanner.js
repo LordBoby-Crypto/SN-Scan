@@ -3,43 +3,26 @@
   let workerPromise = null;
   let running = false;
   let busy = false;
-  let lastCandidate = '';
-  let lastSeenAt = 0;
+  let lastText = '';
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const sanitize = (value) => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 24);
 
-  function validSerial(value) {
-    return value.length >= 6 && value.length <= 20 && /[A-Z]/.test(value) && /\d/.test(value);
-  }
-
   function extractSerial(text) {
-    const raw = String(text || '').toUpperCase();
-    const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-
-    for (const line of lines) {
-      const labelled = line.match(/(?:S\s*\/?\s*N|SERIAL(?:\s+NUMBER)?|SN)\s*[:#=-]*\s*([A-Z0-9][A-Z0-9 ._-]{4,28})/i);
-      if (labelled) {
-        const value = sanitize(labelled[1]);
-        if (validSerial(value)) return value;
-      }
+    const raw = String(text || '').toUpperCase().replace(/[|]/g, 'I');
+    const labelled = raw.match(/(?:S\s*\/?\s*N|SERIAL(?:\s+NUMBER)?)\s*[:#-]?\s*([A-Z0-9][A-Z0-9\s-]{4,23})/);
+    if (labelled) {
+      const value = sanitize(labelled[1]);
+      if (value.length >= 6) return value;
     }
-
-    for (const line of lines) {
-      const compact = sanitize(line);
-      if (validSerial(compact) && compact.length <= 16) return compact;
-    }
-
-    const candidates = (raw.match(/[A-Z0-9][A-Z0-9 ._-]{4,28}/g) || [])
+    const tokens = (raw.match(/[A-Z0-9][A-Z0-9\s-]{5,23}/g) || [])
       .map(sanitize)
-      .filter(validSerial)
-      .filter((value) => value.length <= 16)
-      .sort((a, b) => {
-        const aScore = (a.length >= 7 && a.length <= 10 ? 4 : 0) + (/[A-Z]/.test(a) ? 1 : 0) + (/\d/.test(a) ? 1 : 0);
-        const bScore = (b.length >= 7 && b.length <= 10 ? 4 : 0) + (/[A-Z]/.test(b) ? 1 : 0) + (/\d/.test(b) ? 1 : 0);
-        return bScore - aScore || a.length - b.length;
-      });
-    return candidates[0] || '';
+      .filter((value) => value.length >= 6 && value.length <= 16 && /[A-Z]/.test(value) && /\d/.test(value));
+    return tokens.sort((a, b) => {
+      const aScore = (a.length >= 7 && a.length <= 10 ? 5 : 0) + (/^[A-Z0-9]+$/.test(a) ? 2 : 0);
+      const bScore = (b.length >= 7 && b.length <= 10 ? 5 : 0) + (/^[A-Z0-9]+$/.test(b) ? 2 : 0);
+      return bScore - aScore || a.length - b.length;
+    })[0] || '';
   }
 
   function targetInput() {
@@ -51,9 +34,10 @@
     if (!workerPromise) {
       workerPromise = window.Tesseract.createWorker('eng').then(async (worker) => {
         await worker.setParameters({
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:.#-_ ',
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/:.- ',
           tessedit_pageseg_mode: '6',
-          preserve_interword_spaces: '1'
+          preserve_interword_spaces: '1',
+          user_defined_dpi: '300'
         });
         return worker;
       });
@@ -71,17 +55,17 @@
         #liveScannerOverlay .ls-close{border:0;background:#123036;color:#d8ffff;border-radius:12px;padding:10px 14px;font-weight:750}
         #liveScannerOverlay .ls-stage{position:relative;overflow:hidden;background:#000}
         #liveScannerOverlay video{width:100%;height:100%;object-fit:cover}
-        #liveScannerOverlay .ls-mask{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;background:linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.04) 26%,rgba(0,0,0,.04) 74%,rgba(0,0,0,.42))}
-        #liveScannerOverlay .ls-box{width:min(94vw,900px);height:min(38vh,300px);border:3px solid #2ee7d2;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.18),0 0 28px rgba(46,231,210,.4);display:flex;align-items:flex-end;justify-content:center}
+        #liveScannerOverlay .ls-mask{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+        #liveScannerOverlay .ls-box{width:min(94vw,900px);height:min(34vh,300px);border:3px solid #2ee7d2;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.22),0 0 28px rgba(46,231,210,.4);display:flex;align-items:flex-end;justify-content:center}
         #liveScannerOverlay .ls-box span{transform:translateY(34px);font-size:.86rem;color:#d8ffff;background:#071114;padding:7px 10px;border-radius:9px}
         #liveScannerOverlay .ls-foot{padding:14px 16px 18px;background:#071114;border-top:1px solid #183338;display:grid;gap:8px;text-align:center}
-        #liveScannerOverlay .ls-status{font-weight:800;color:#2ee7d2;min-height:24px}
+        #liveScannerOverlay .ls-status{font-weight:800;color:#2ee7d2}
         #liveScannerOverlay .ls-note{font-size:.84rem;color:#9eb7bc;line-height:1.4}
         #liveScannerOverlay canvas{display:none}
       </style>
       <div class="ls-head"><strong>Live S/N scanner</strong><button class="ls-close" type="button">Cancel</button></div>
-      <div class="ls-stage"><video playsinline muted autoplay></video><div class="ls-mask"><div class="ls-box"><span>Put the S/N text anywhere inside this box</span></div></div><canvas></canvas></div>
-      <div class="ls-foot"><div class="ls-status">Starting camera...</div><div class="ls-note">Move closer until the text is sharp. Sticker labels and Alt + V screens are both supported.</div></div>`;
+      <div class="ls-stage"><video playsinline muted autoplay></video><div class="ls-mask"><div class="ls-box"><span>Place the S/N text anywhere inside this box</span></div></div><canvas></canvas></div>
+      <div class="ls-foot"><div class="ls-status">Starting camera...</div><div class="ls-note">Hold the phone steady for a moment. Alt + V screens and sticker labels are supported.</div></div>`;
     document.body.append(overlay);
     return overlay;
   }
@@ -100,77 +84,74 @@
       input.value = serial;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.focus();
-      input.select?.();
     }
-    navigator.vibrate?.([70, 35, 70]);
+    navigator.vibrate?.([80, 40, 80]);
     try {
       const context = new AudioContext();
       const osc = context.createOscillator();
       const gain = context.createGain();
-      osc.frequency.value = 900;
-      gain.gain.value = 0.06;
+      osc.frequency.value = 880;
+      gain.gain.value = 0.05;
       osc.connect(gain).connect(context.destination);
       osc.start();
-      osc.stop(context.currentTime + 0.1);
+      osc.stop(context.currentTime + 0.09);
     } catch {}
     stopScanner();
   }
 
-  function prepareFrame(video, canvas) {
+  function preprocess(video, canvas, mode) {
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     const cropW = Math.floor(vw * 0.96);
-    const cropH = Math.floor(vh * 0.42);
+    const cropH = Math.floor(vh * 0.38);
     const sx = Math.floor((vw - cropW) / 2);
     const sy = Math.floor((vh - cropH) / 2);
-    canvas.width = Math.min(1500, Math.max(900, cropW));
-    canvas.height = Math.max(280, Math.floor(canvas.width * cropH / cropW));
+    const scale = 1.6;
+    canvas.width = Math.min(1800, Math.floor(cropW * scale));
+    canvas.height = Math.max(320, Math.floor(cropH * scale));
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.filter = 'grayscale(1) contrast(2.1) brightness(1.08)';
+    ctx.filter = mode === 0 ? 'grayscale(1) contrast(2.3)' : 'grayscale(1) contrast(3) brightness(1.15)';
     ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    if (mode === 1) {
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = image.data;
+      let sum = 0;
+      for (let i = 0; i < d.length; i += 4) sum += d[i];
+      const threshold = Math.max(90, Math.min(190, sum / (d.length / 4) * 0.92));
+      for (let i = 0; i < d.length; i += 4) {
+        const v = d[i] > threshold ? 255 : 0;
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+      ctx.putImageData(image, 0, 0);
+    }
+  }
+
+  async function recognizeCanvas(canvas, worker) {
+    const result = await worker.recognize(canvas);
+    return result.data.text || '';
   }
 
   async function scanFrame(video, canvas, status) {
     if (!running || busy || video.readyState < 2) return;
     busy = true;
     try {
-      prepareFrame(video, canvas);
-      let text = '';
-
-      if ('TextDetector' in window) {
-        try {
-          const blocks = await new window.TextDetector().detect(canvas);
-          text = blocks.map((block) => block.rawValue).join('\n');
-        } catch {}
-      }
-
-      if (!text) {
-        status.textContent = 'Reading text...';
-        const worker = await getWorker();
-        if (worker) {
-          const result = await worker.recognize(canvas);
-          text = result.data.text || '';
+      const worker = await getWorker();
+      if (!worker) throw new Error('OCR unavailable');
+      let combined = '';
+      for (let mode = 0; mode < 2; mode++) {
+        preprocess(video, canvas, mode);
+        combined += '\n' + await recognizeCanvas(canvas, worker);
+        const candidate = extractSerial(combined);
+        if (candidate) {
+          status.textContent = `Found ${candidate}`;
+          return success(candidate);
         }
       }
-
-      const candidate = extractSerial(text);
-      if (candidate) {
-        const now = Date.now();
-        status.textContent = `Found ${candidate}`;
-
-        // Accept normal Chromebook-length serials immediately. Longer or unusual
-        // values still require a second matching read to reduce false positives.
-        if (candidate.length >= 7 && candidate.length <= 10) return success(candidate);
-        if (candidate === lastCandidate && now - lastSeenAt < 3000) return success(candidate);
-        lastCandidate = candidate;
-        lastSeenAt = now;
-      } else {
-        const preview = sanitize(text).slice(0, 18);
-        status.textContent = preview ? `Seeing ${preview} - move closer` : 'Aim at the S/N text and move closer';
-      }
+      lastText = combined.replace(/\s+/g, ' ').trim().slice(0, 60);
+      status.textContent = lastText ? `Seeing: ${lastText}` : 'Could not read that frame - hold steady';
     } catch (error) {
       console.error('Live scanner error', error);
-      status.textContent = 'Could not read that frame - move closer';
+      status.textContent = 'Could not read that frame - hold steady';
     } finally {
       busy = false;
     }
@@ -189,17 +170,21 @@
           facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          focusMode: { ideal: 'continuous' }
+          frameRate: { ideal: 30 }
         },
         audio: false
       });
       video.srcObject = stream;
       await video.play();
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities?.();
+      if (caps?.focusMode?.includes('continuous')) {
+        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+      }
       running = true;
-      lastCandidate = '';
-      lastSeenAt = 0;
-      status.textContent = 'Aim at the S/N text';
-      getWorker().catch(() => {});
+      status.textContent = 'Loading text reader...';
+      await getWorker();
+      status.textContent = 'Aim at the S/N text and hold steady';
       const loop = async () => {
         if (!running) return;
         await scanFrame(video, canvas, status);
